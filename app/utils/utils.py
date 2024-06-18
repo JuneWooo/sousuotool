@@ -1,21 +1,11 @@
 import sys
-import typing
-
-
-if typing.TYPE_CHECKING:
-    import types
-
-"""
-Module for rotating proxies
-"""
-
+import requests
 import ipaddress
 import random
 from typing import List, Optional, Set, TypedDict
 
-import requests
-from fp.errors import FreeProxyException
-from fp.fp import FreeProxy
+from fp.errors import FreeProxyException  # type:ignore
+from fp.fp import FreeProxy  # type:ignore
 
 
 class ProxyBrokerCriteria(TypedDict, total=False):
@@ -85,7 +75,9 @@ def search_proxy_servers(
         timeout=timeout,
     )
 
-    def search_all(proxybroker: FreeProxy, k: int, search_outside: bool) -> List[str]:
+    def search_all(
+        proxybroker: FreeProxy, k: int, search_outside: bool
+    ) -> List[str]:
         candidateset = proxybroker.get_proxy_list(search_outside)
         random.shuffle(candidateset)
 
@@ -96,7 +88,8 @@ def search_proxy_servers(
 
             try:
                 server = proxybroker._FreeProxy__check_if_proxy_is_working(
-                    setting)
+                    setting
+                )
 
                 if not server:
                     continue
@@ -131,54 +124,6 @@ def search_proxy_servers(
     return search_all(proxybroker, max_shape, search_outside_if_empty)
 
 
-def _parse_proxy(proxy: ProxySettings) -> ProxySettings:
-    """parses a proxy configuration with known server
-
-    Args:
-        proxy: The proxy configuration to parse.
-
-    Returns:
-        A 'playwright' compliant proxy configuration.
-    """
-    assert "server" in proxy, "missing server in the proxy configuration"
-
-    auhtorization = [x in proxy for x in ("username", "password")]
-
-    message = "username and password must be provided in pairs or not at all"
-
-    assert all(auhtorization) or not any(auhtorization), message
-
-    parsed = {"server": proxy["server"]}
-
-    if proxy.get("bypass"):
-        parsed["bypass"] = proxy["bypass"]
-
-    if all(auhtorization):
-        parsed["username"] = proxy["username"]
-        parsed["password"] = proxy["password"]
-
-    return parsed
-
-
-def _search_proxy(proxy: Proxy) -> ProxySettings:
-    """searches for a proxy server matching the specified broker criteria
-
-    Args:
-        proxy: The proxy configuration to search for.
-
-    Returns:
-        A 'playwright' compliant proxy configuration.
-    """
-
-    # remove max_shape from criteria
-    criteria = proxy.get("criteria", {}).copy()
-    criteria.pop("max_shape", None)
-
-    server = search_proxy_servers(max_shape=1, **criteria)[0]
-
-    return {"server": server}
-
-
 def is_ipv4_address(address: str) -> bool:
     """If a proxy address conforms to a IPv4 address"""
     try:
@@ -186,101 +131,6 @@ def is_ipv4_address(address: str) -> bool:
         return True
     except ipaddress.AddressValueError:
         return False
-
-
-def parse_or_search_proxy(proxy: Proxy) -> ProxySettings:
-    """parses a proxy configuration or searches for a new one matching
-    the specified broker criteria
-
-    Args:
-        proxy: The proxy configuration to parse or search for.
-
-    Returns:
-        A 'playwright' compliant proxy configuration.
-
-    Notes:
-        - If the proxy server is a IP address, it is assumed to be
-        a proxy server address.
-        - If the proxy server is 'broker', a proxy server is searched for
-        based on the provided broker criteria.
-
-    Example:
-        >>> proxy = {
-        ...     "server": "broker",
-        ...     "criteria": {
-        ...         "anonymous": True,
-        ...         "countryset": {"GB", "US"},
-        ...         "secure": True,
-        ...         "timeout": 5.0
-        ...         "search_outside_if_empty": False
-        ...     }
-        ... }
-
-        >>> parse_or_search_proxy(proxy)
-        {
-            "server": "<proxy-server-matching-criteria>",
-        }
-
-    Example:
-        >>> proxy = {
-        ...     "server": "192.168.1.1:8080",
-        ...     "username": "<username>",
-        ...     "password": "<password>"
-        ... }
-
-        >>> parse_or_search_proxy(proxy)
-        {
-            "server": "192.168.1.1:8080",
-            "username": "<username>",
-            "password": "<password>"
-        }
-    """
-    assert "server" in proxy, "missing server in the proxy configuration"
-
-    server_address = proxy["server"].split(":", maxsplit=1)[0]
-
-    if is_ipv4_address(server_address):
-        return _parse_proxy(proxy)
-
-    assert proxy["server"] == "broker", "unknown proxy server"
-
-    return _search_proxy(proxy)
-
-
-def srcfile_import(modpath: str, modname: str) -> "types.ModuleType":
-    """imports a python module from its srcfile
-
-    Args:
-        modpath: The srcfile absolute path
-        modname: The module name in the scope
-
-    Returns:
-        The imported module
-
-    Raises:
-        ImportError: If the module cannot be imported from the srcfile
-    """
-    import importlib.util  # noqa: F401
-
-    #
-    spec = importlib.util.spec_from_file_location(modname, modpath)
-
-    if spec is None:
-        message = f"missing spec for module at {modpath}"
-        raise ImportError(message)
-
-    if spec.loader is None:
-        message = f"missing spec loader for module at {modpath}"
-        raise ImportError(message)
-
-    module = importlib.util.module_from_spec(spec)
-
-    # adds the module to the global scope
-    sys.modules[modname] = module
-
-    spec.loader.exec_module(module)
-
-    return module
 
 
 def dynamic_import(modname: str, message: str = "") -> None:

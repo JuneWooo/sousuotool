@@ -12,8 +12,9 @@ class RespStatus(Enum):
     error = 500
 
 
-def resp(status_code: RespStatus = RespStatus.success, msg: str = "ok", data=None):
+def resp(
+    status_code: RespStatus = RespStatus.success, msg: str = "ok", data=None
+):
     if data is None:
         data = []
     return RESPModel(code=status_code.value, message=msg, result=data)
-

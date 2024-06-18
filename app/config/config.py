@@ -5,13 +5,14 @@
 @date: 2024/3/1
 @IDE: vscode
 """
+
 from pydantic_settings import BaseSettings
 
 
 class Setting(BaseSettings):
     class Config:
-        env_file = '.env'
-        env_file_encoding = 'utf-8'
+        env_file = ".env"
+        env_file_encoding = "utf-8"
 
     PROJECT_NAME: str = "Web Search"
     DESCRIPTION: str = "search"
@@ -28,4 +29,4 @@ class Setting(BaseSettings):
     LOG_LEVEL: str
 
 
-settings = Setting()
+settings = Setting()  # type: ignore

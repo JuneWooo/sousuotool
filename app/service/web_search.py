@@ -7,39 +7,43 @@ from app.schemas.search_schema import SearchData
 
 
 class WebSearch:
-
-    def delta_search(self, message: str) -> List[SearchData]:
+    
+    def delta_search(self, message: str, num:int) -> List[SearchData]:
         """
         func:增量检索
-        params: 
+        params:
             message: key words
-        return: 
+        return:
             [
                 {
                     "content": "缩略信息"
                     "metadata": {
                         "title": "xxx",
                         "source": "http:xxxx"
-                    }                    
+                    }
                 }
                 ...
             ]
         """
         data = []
         loader = ChromiumLoader(keywords=[message])
-        document = loader.load()
-        for doc in document:
+        documents = loader.load()
+        for doc in documents:
             data.append(
                 SearchData(content=doc.page_content, metadata=doc.metadata)
             )
-        return data
+        
+        if len(data) >= num:
+            return data[:num]
+        else:
+            return data
 
-    def full_search(self, message: str) -> List[SearchData]:
+    def full_search(self, message: str, num:int) -> List[SearchData]:
         """
         func: 全量检索
-        params: 
+        params:
             message: key words
-        return: 
+        return:
             [
                 {
                     "title": "xxx",
@@ -56,7 +60,7 @@ class WebSearch:
         metadata_list = [doc.metadata for doc in documents]
         time.sleep(1)
         url_loader = ChromiumLoader(
-            urls=[item["source"] for item in metadata_list], keywords={})
+            urls=[item["source"] for item in metadata_list])
         url_documents = url_loader.load()
         for url_doc in url_documents:
             if url_doc.page_content:
@@ -69,14 +73,16 @@ class WebSearch:
             data.append(
                 SearchData(content=doc.page_content, metadata=doc.metadata)
             )
-
-        return data
-
+        
+        if len(data) >= num:
+            return data[:num]
+        else:
+            return data
     def url_search(self, url: str) -> List[SearchData]:
         """
         func: 请求链接，解析结果
             request url 请求
-            :return: 
+            :return:
         """
         data = []
         loader = ChromiumLoader(urls=[url])
@@ -90,21 +96,13 @@ class WebSearch:
             logger.error(f"error:{e}")
             return [
                 SearchData(
-                    content="parser content error!",
-                    metadata={
-                        "source": url
-                    }
+                    content="parser content error!", metadata={"source": url}
                 )
             ]
         else:
             parsed_content = loader.parse_url_content(minimized_body)
             data = [
-                SearchData(
-                    content=parsed_content,
-                    metadata={
-                        "source": url
-                    }
-                )
+                SearchData(content=parsed_content, metadata={"source": url})
             ]
             return data
 
